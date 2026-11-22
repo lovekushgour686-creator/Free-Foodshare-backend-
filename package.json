@@ -1,0 +1,32 @@
+{
+  "name": "foodshare-backend",
+  "version": "1.0.0",
+  "description": "Backend API for FoodShare platform connecting food providers with nonprofit organizations",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "db:init": "node init-db.js"
+  },
+  "keywords": [
+    "foodshare",
+    "express",
+    "postgresql",
+    "food-rescue",
+    "jwt",
+    "api"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.24.6"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}
