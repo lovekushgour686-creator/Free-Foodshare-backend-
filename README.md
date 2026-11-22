@@ -1,105 +1,122 @@
-# FoodShare Backend API (MySQL)
+# FoodShare Frontend (React + Vite + Tailwind CSS)
 
-Node.js and Express REST API for **FoodShare**, a surplus food redistribution platform connecting food providers (restaurants, grocery stores, bakeries) with nonprofit organizations and charities.
+Modern, responsive web application for **FoodShare**, enabling seamless surplus food donation, cold-chain safety logging, and nonprofit community claims.
 
 ## Tech Stack
-- **Runtime:** Node.js (v18+)
-- **Framework:** Express.js
-- **Database:** MySQL 8.0+ (using `mysql2/promise` with connection pooling)
-- **Authentication:** JWT (`jsonwebtoken`) & password hashing (`bcrypt`)
-- **Environment Management:** `dotenv`
+- **Framework:** React 18 + Vite
+- **Styling:** Tailwind CSS (Custom emerald and brand palette)
+- **Routing:** React Router DOM (v6)
+- **HTTP Client:** Axios (with Bearer JWT interceptor & auto-logout on session expiration)
+- **Icons:** Lucide React (`lucide-react`)
 
 ---
 
 ## Getting Started
 
 ### 1. Environment Setup
-Configure your MySQL database credentials in `.env`:
+The frontend connects to the backend API via `VITE_API_BASE_URL`.
+See `.env.example` or `.env`:
 
 ```env
-PORT=5000
-NODE_ENV=development
-
-# MySQL Database Configuration
-DB_HOST=localhost
-DB_USER=root
-DB_PASSWORD=
-DB_NAME=foodshare
-DB_PORT=3306
-
-# JWT Authentication
-JWT_SECRET=foodshare_jwt_super_secret_key_change_in_production_2026
-JWT_EXPIRES_IN=24h
-
-# Client Application URL (for CORS)
-CLIENT_URL=http://localhost:3000
+VITE_API_BASE_URL=http://localhost:5000/api
 ```
 
-### 2. Database Migration / Initialization
-Ensure MySQL service (e.g., XAMPP, WampServer, or local MySQL 8) is running. Initialize all tables, ENUMs, foreign keys, and indexes from `schema.sql`:
+### 2. Run the Development Server
 
 ```bash
-npm run db:init
-```
-
-### 3. Run the Development Server
-Starts the server with automatic restart on file changes using `nodemon`:
-
-```bash
+cd frontend
 npm run dev
 ```
 
-The server starts at `http://localhost:5000`.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
-## API Documentation
+## Features & UI Architecture
 
-### 1. Authentication (`/api/auth`)
-| Method | Endpoint | Access | Description |
-|---|---|---|---|
-| `POST` | `/api/auth/register` | Public | Register user (`name`, `email`, `password`, `role`: `provider`\|`organization`\|`recipient`\|`admin`, `phone`, `address`). Returns JWT token and profile. |
-| `POST` | `/api/auth/login` | Public | Login with `email` and `password`. Returns JWT token and profile. |
-| `GET` | `/api/auth/me` | Authenticated | Retrieve the authenticated user's current profile. |
+### 1. Centralized Authentication Gateway (`AuthGateway.jsx`) & Role-Based Navigation
+- **Centralized Auth Gateway (`/auth`, `/login`, `/register`)**:
+  - Unified modal/card layout featuring a surplus-food rescue palette (emerald & forest tones, warm amber accents, glassmorphic cards).
+  - 3-card role selection grid:
+    1. **Food Donor / Provider** (`provider`): Restaurants, bakeries, caterers, supermarkets with surplus food (redirects to `/provider`).
+    2. **NGO / Organization** (`organization`): Food banks, shelters, charities claiming bulk surplus (redirects to `/ngo`).
+    3. **General Recipient / Community Member** (`recipient`): Community volunteers and individuals seeking local meal distribution (redirects to `/marketplace`).
+  - Interactive mode toggle between **Sign In to Your Account** and **Create New Account**.
+  - Adaptive role guidance banner and custom field labels (e.g., "Business / Kitchen Name" vs "Organization / NGO Name" vs "Your Full Name").
+  - Quick-test demo credentials buttons for instant 1-click test fill (`🥖 Donor Demo`, `🏢 NGO Demo`, `🤝 Community Demo`).
+- **Global Auth Context (`useAuth`)**:
+  - Handles login, registration, persistent JWT storage in `localStorage`, and session validation via `/api/auth/me`.
+  - Roles supported: `'provider'`, `'organization'`, `'recipient'`, `'admin'`.
+- **Navigation (`Navbar.jsx`)**:
+  - **Public**: Home, Marketplace, Sign In, Join FoodShare.
+  - **Food Provider**: Home, Marketplace, **Provider Dashboard**, Notification Bell.
+  - **Charity Organization**: Home, Marketplace, **NGO Portal**, **My Claims**, Notification Bell.
+  - **Community Member**: Home, Marketplace, Community Badge, Notification Bell.
+  - **Unread Notification Bell**: Real-time counter badge with dropdown drawer (`NotificationDropdown.jsx`) allowing one-click read status and direct alerts for claims and safety warnings.
 
-### 2. Food Listings (`/api/listings`)
-| Method | Endpoint | Access | Description |
-|---|---|---|---|
-| `GET` | `/api/listings` | Public | Fetch available, unexpired listings. Optional query params: `?category=Bakery`, `?search=bread`, `?limit=20`, `?offset=0`. |
-| `GET` | `/api/listings/ngo-feed` | Public | Live NGO Portal feed returning active, unclaimed, unexpired listings (`status = 'available'`, `claimed_by IS NULL`) with safety telemetry. |
-| `GET` | `/api/listings/:id` | Public | Fetch details for a specific listing including its recorded food safety checks. |
-| `POST` | `/api/listings` | `provider`, `admin` | Create a new food listing with pickup window timestamps, quantity, category, and expiry. |
+### 2. Surplus Food Marketplace (`Marketplace.jsx`)
+- **Category Filter Pills**: Quick toggle across Bakery, Produce, Prepared Meals, Dairy, Pantry, etc.
+- **Search Bar**: Instant keyword filtering across listing titles and descriptions.
+- **Listing Cards (`ListingCard.jsx`)**:
+  - Live expiry countdown badges with color alerts (e.g., `Expires in 4h 30m`).
+  - Food quantity & unit of measurement.
+  - Pickup window timeline.
+  - Verified provider status.
+- **Listing Detail Modal (`ListingDetailModal.jsx`)**:
+  - Full item contents and allergen warnings.
+  - Complete history of food safety checks (temperatures and packaging audits).
+  - Provider contact details and pickup address.
+  - One-click "Claim This Food" button for charities.
 
-### 3. Food Claims (`/api/claims`)
-| Method | Endpoint | Access | Description |
-|---|---|---|---|
-| `POST` | `/api/claims` | `organization`, `admin` | Claim an available listing (`listing_id` in body). Changes listing status to `reserved` and notifies provider. |
-| `POST` | `/api/claims/:id` | `organization`, `admin` | Atomically claim an available, unexpired listing by ID (`status = 'claimed'`, `claimed_by = user_id`), record in `food_claims`, and notify provider. |
-| `GET` | `/api/claims/my` | Authenticated | Fetch claims relevant to the logged-in user (`organization` sees their claims, `provider` sees incoming claims). |
-| `PATCH` | `/api/claims/:id/status` | Authenticated | Update claim status (`approved`, `rejected`, `completed`, or `cancelled`). Synchronizes listing status and notifies users. |
+### 3. Food Provider Dashboard (`ProviderDashboard.jsx`)
+- **Post Surplus Food Form**: Post donations with quantity, unit, expiry timestamp, pickup window start/end, and description.
+- **My Listings Tab**: Monitor active donations, claim states, and open the Food Safety Check modal.
+- **Food Safety Check Modal (`SafetyCheckModal.jsx`)**: Log storage temperatures (with presets for Frozen -18°C, Chilled 4°C, Hot-held 65°C), container seal integrity, and cold-chain compliance notes.
+- **Incoming Claims Tab**: Review claim requests placed by charity organizations with quick **Approve**, **Reject**, and **Mark Picked Up** action buttons.
 
-### 4. Food Safety Checks (`/api/safety`)
-| Method | Endpoint | Access | Description |
-|---|---|---|---|
-| `POST` | `/api/safety` | Authenticated | Record temperature (`temperature_celsius`), packaging integrity (`packaging_intact`), and inspection `notes` for a listing. |
-| `GET` | `/api/safety/listing/:listingId` | Public | Retrieve safety check logs for a specific listing. |
+### 4. Organization Claims Tracker (`OrganizationClaims.jsx`)
+- Filter by status: `Pending`, `Approved (Ready for Pickup)`, `Completed`.
+- Real-time status cards showing pickup addresses and emergency provider contacts.
+- Ability to cancel pending claims so food returns to the open marketplace.
 
-### 5. Notifications (`/api/notifications`)
-| Method | Endpoint | Access | Description |
-|---|---|---|---|
-| `GET` | `/api/notifications` | Authenticated | Fetch notifications for user (supports `?unread_only=true`). |
-| `PATCH` | `/api/notifications/:id/read` | Authenticated | Mark a specific notification as read. |
-| `PATCH` | `/api/notifications/read-all` | Authenticated | Mark all notifications for the user as read. |
+---
 
-### 6. NGO Profiles (`/api/ngos` & `/api/ngo`)
-| Method | Endpoint | Access | Description |
-|---|---|---|---|
-| `GET` | `/api/ngos/profile` | Authenticated | Retrieve the NGO profile (`reg_id`, `location`, `contact_info`, `notification_status`, `radius_km`) for the logged-in organization. |
-| `POST` | `/api/ngos/profile` | `organization`, `admin` | Create or update the organization's NGO profile. |
-| `PATCH` | `/api/ngos/notifications` | Authenticated | Update NGO notification preferences (`notification_status: true/false`). |
-| `GET` | `/api/ngos/all` | Public | List all registered NGO profiles and service coverage areas. |
+## Project Structure
 
-### 7. Health Check (`/api/health`)
-| Method | Endpoint | Access | Description |
-|---|---|---|---|
-| `GET` | `/api/health` | Public | Checks MySQL database connectivity and returns service status. |
+```
+frontend/
+├── index.html
+├── package.json
+├── vite.config.js
+├── tailwind.config.js
+├── postcss.config.js
+├── .env.example
+├── .env
+├── src/
+│   ├── main.jsx
+│   ├── App.jsx
+│   ├── index.css
+│   ├── api/
+│   │   └── axios.js            # Axios with JWT request & response interceptors
+│   ├── context/
+│   │   ├── AuthContext.jsx      # User profile, role checks, login/register/logout
+│   │   └── NotificationContext.jsx # Polling, unread badges, mark-read actions
+│   ├── components/
+│   │   ├── Navbar.jsx           # Responsive navbar with role pills & notification bell
+│   │   ├── Footer.jsx           # Clean footer with SDG mission
+│   │   ├── ProtectedRoute.jsx   # Role guard wrapper
+│   │   ├── NotificationDropdown.jsx # Real-time alerts drawer
+│   │   ├── SafetyCheckModal.jsx # Log food temperature & container seals
+│   │   ├── ListingCard.jsx      # Interactive card with countdowns & safety tags
+│   │   └── ListingDetailModal.jsx # Detailed inspection & claim trigger
+│   └── pages/
+│       ├── Home.jsx             # Hero section, impact statistics, how-it-works
+│       ├── AuthGateway.jsx      # Centralized role-based auth gateway & modal layout
+│       ├── Login.jsx            # Sign-in portal wrapper delegating to AuthGateway
+│       ├── Register.jsx         # Sign-up portal wrapper delegating to AuthGateway
+│       ├── Marketplace.jsx      # Surplus food feed with filters & search
+│       ├── ProviderDashboard.jsx# Listing creation, safety audits, claim management
+│       ├── OrganizationClaims.jsx # Charity pickup tracker & history
+│       └── NotFound.jsx         # 404 page
+```
+
